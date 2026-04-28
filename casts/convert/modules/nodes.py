@@ -26,10 +26,12 @@ from casts.convert.modules.utils import (
     decode_base64_image,
     encode_image_to_base64,
     resize_to_emoticon,
+    to_square_rgba_png,
     validate_image,
 )
 
-_OPENAI_MODEL = "gpt-5.5-image"
+_DEFAULT_OPENAI_MODEL = "gpt-image-2"
+_DEFAULT_FALLBACK_MODEL = "dall-e-2"
 
 
 class ImageValidateNode(BaseNode):
@@ -51,10 +53,10 @@ class ImageValidateNode(BaseNode):
 
 
 class EmoticonGenerateNode(BaseNode):
-    """Generate a Kakao emoticon using GPT-5.5 image (OpenAI Images Edit API).
+    """Generate a Kakao emoticon using the OpenAI Images API.
 
-    Takes the original image and transforms it into a cartoon/emoticon style
-    in a single API call. Writes `styled_image` (raw bytes) to state.
+    Sends the original image with a style prompt via the image edit endpoint.
+    Writes `styled_image` (raw bytes) to state.
     """
 
     def __init__(self):
@@ -66,23 +68,51 @@ class EmoticonGenerateNode(BaseNode):
             self._client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         return self._client
 
+    def _edit_with_model(self, model: str, image_bytes: bytes, image_format: str):
+        if model == "dall-e-2":
+            edit_image = to_square_rgba_png(image_bytes)
+            image_file = bytes_to_file(edit_image, "input.png")
+            return self._get_client().images.edit(
+                model=model,
+                image=image_file,
+                prompt=EMOTICON_GENERATE_PROMPT,
+                n=1,
+                response_format="b64_json",
+                size="1024x1024",
+            )
+
+        file_ext = "jpg" if image_format == "jpeg" else image_format
+        image_file = bytes_to_file(image_bytes, f"input.{file_ext}")
+        return self._get_client().images.edit(
+            model=model,
+            image=image_file,
+            prompt=EMOTICON_GENERATE_PROMPT,
+            output_format="png",
+            size="1024x1024",
+        )
+
+    def _create_edit(self, image_bytes: bytes, image_format: str):
+        model = os.getenv("OPENAI_IMAGE_MODEL", _DEFAULT_OPENAI_MODEL)
+        fallback_model = os.getenv("OPENAI_IMAGE_FALLBACK_MODEL", _DEFAULT_FALLBACK_MODEL)
+
+        try:
+            return self._edit_with_model(model, image_bytes, image_format)
+        except openai.PermissionDeniedError as exc:
+            if fallback_model and fallback_model != model:
+                self.log("Primary image model denied; retrying fallback", model=model)
+                return self._edit_with_model(fallback_model, image_bytes, image_format)
+            raise exc
+
     def execute(self, state):
         image_bytes = decode_base64_image(state["image_data"])
         image_format = state["image_format"].lower()
-        filename = f"input.{image_format}"
+        response = self._create_edit(image_bytes, image_format)
 
-        response = self._get_client().images.edit(
-            model=_OPENAI_MODEL,
-            image=bytes_to_file(image_bytes, filename),
-            prompt=EMOTICON_GENERATE_PROMPT,
-            n=1,
-            size="1024x1024",
-            response_format="b64_json",
-        )
+        if response.data and response.data[0].b64_json:
+            styled_image: bytes = base64.b64decode(response.data[0].b64_json)
+            return {"styled_image": styled_image}
 
-        styled_b64: str = response.data[0].b64_json
-        styled_image: bytes = base64.b64decode(styled_b64)
-        return {"styled_image": styled_image}
+        raise RuntimeError(f"No image data in OpenAI Images response: {response}")
 
 
 class ImageFormatNode(BaseNode):

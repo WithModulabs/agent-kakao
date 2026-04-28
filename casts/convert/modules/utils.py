@@ -70,6 +70,27 @@ def resize_to_emoticon(image_bytes: bytes) -> bytes:
     return output.getvalue()
 
 
+def to_square_rgba_png(image_bytes: bytes) -> bytes:
+    """Convert image to square RGBA PNG required by dall-e-2 images.edit.
+
+    Pads to square with transparent background, then converts to RGBA PNG.
+
+    Args:
+        image_bytes: Raw image bytes in any supported format.
+
+    Returns:
+        Square RGBA PNG bytes.
+    """
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    w, h = img.size
+    side = max(w, h)
+    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    square.paste(img, ((side - w) // 2, (side - h) // 2))
+    output = io.BytesIO()
+    square.save(output, format="PNG")
+    return output.getvalue()
+
+
 def bytes_to_file(image_bytes: bytes, filename: str) -> io.BytesIO:
     """Wrap raw bytes in a named BytesIO for OpenAI API calls.
 

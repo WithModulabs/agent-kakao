@@ -6,11 +6,19 @@ Endpoints:
 """
 
 import base64
+import logging
+import traceback
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import Response
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse, Response
+
+load_dotenv()
 
 from casts.convert.graph import convert_graph
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Kakao Emoticon API",
@@ -28,6 +36,12 @@ _MIME_TO_FORMAT: dict[str, str] = {
 }
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("Unhandled exception: %s\n%s", exc, traceback.format_exc())
+    return JSONResponse(status_code=500, content={"detail": str(exc), "type": type(exc).__name__})
+
+
 @app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
     """Liveness check."""
@@ -43,17 +57,11 @@ def health() -> dict[str, str]:
             "description": "360x360 PNG emoticon image.",
         },
         400: {"description": "Invalid or unsupported image."},
-        422: {"description": "Validation error."},
     },
     tags=["convert"],
 )
 async def convert(file: UploadFile = File(..., description="Photo to convert (PNG/JPEG/WEBP, max 10 MB)")) -> Response:
-    """Convert an uploaded photo into a Kakao emoticon-style PNG.
-
-    - **file**: Image file (PNG, JPEG, or WEBP). Maximum size: 10 MB.
-
-    Returns a 360×360 PNG image as binary content.
-    """
+    """Convert an uploaded photo into a Kakao emoticon-style PNG."""
     content_type = (file.content_type or "").lower()
     image_format = _MIME_TO_FORMAT.get(content_type)
 
@@ -66,6 +74,8 @@ async def convert(file: UploadFile = File(..., description="Photo to convert (PN
     raw_bytes = await file.read()
     image_data = base64.b64encode(raw_bytes).decode("utf-8")
 
+    logger.info("Invoking convert graph for %s (%d bytes)", image_format, len(raw_bytes))
+
     result = await _COMPILED_GRAPH.ainvoke(
         {"image_data": image_data, "image_format": image_format}
     )
@@ -75,3 +85,4 @@ async def convert(file: UploadFile = File(..., description="Photo to convert (PN
 
     emoticon_bytes = base64.b64decode(result["result"])
     return Response(content=emoticon_bytes, media_type="image/png")
+

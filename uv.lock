@@ -723,6 +723,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "langchain" },
     { name = "langgraph" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "uvicorn" },
 ]
@@ -749,6 +750,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.136.1" },
     { name = "langchain", specifier = ">=1.0.0" },
     { name = "langgraph", specifier = ">=1.0.0" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "python-multipart", specifier = ">=0.0.27" },
     { name = "uvicorn", specifier = ">=0.46.0" },
 ]

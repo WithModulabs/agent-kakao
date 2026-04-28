@@ -121,7 +121,7 @@ uv run pytest tests/cast_tests/convert_test.py -v
 - 최대 파일 크기: 2MB
 
 ### 이모티콘 생성 모델
-- **사용 모델:** GPT-5.5 image (OpenAI Images Edit API)
-- **API:** `openai.images.edit()` — 원본 이미지 + 카카오 이모티콘 스타일 프롬프트 전달
-- **대안:** GPT-4o image, gpt-image-1
+- **사용 모델:** gpt-image-1 (OpenAI Responses API)
+- **API:** `openai.responses.create()` — 원본 이미지 + 카카오 이모티콘 스타일 프롬프트 전달
+- **대안:** GPT-4o image, dall-e-3
 <!-- END MANUAL -->

@@ -134,3 +134,9 @@ cython_debug/
 *.tmp
 *.swp
 *~
+
+.agents/
+.claude/
+.github/
+*.jpg
+*.png
