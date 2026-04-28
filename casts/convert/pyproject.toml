@@ -4,4 +4,7 @@ version = "0.1.0"
 description = "Convert Graph"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "openai>=1.0.0",
+    "pillow>=10.0.0",
+]

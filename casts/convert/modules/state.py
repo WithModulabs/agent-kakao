@@ -1,4 +1,4 @@
-"""[Required] State definition shared across sam graphs.
+"""[Required] State definition shared across Convert graphs.
 
 Guidelines:
     - Create TypedDict classes for input, output, overall state, and any other state you need.
@@ -9,7 +9,8 @@ Official document URL:
     - State: https://docs.langchain.com/oss/python/langgraph/graph-api#state
 """
 
-from langgraph.graph import MessagesState
+from typing import Optional
+
 from typing_extensions import TypedDict
 
 
@@ -17,31 +18,41 @@ class InputState(TypedDict):
     """Input state container.
 
     Attributes:
-        query: User query
+        image_data: Base64-encoded input image string.
+        image_format: Image format ('png', 'jpeg', 'webp').
     """
 
-    query: str
+    image_data: str
+    image_format: str
 
 
 class OutputState(TypedDict):
     """Output state container.
 
     Attributes:
-        messages: Additional messages (inherited from MessagesState)
+        result: Base64-encoded emoticon image (PNG, 360x360).
+        validation_error: Error message when image validation fails, None otherwise.
     """
 
-    result: str
+    result: Optional[str]
+    validation_error: Optional[str]
 
 
-class State(MessagesState):
-    """Graph state container.
+class State(TypedDict):
+    """Internal graph state container.
 
     Attributes:
-        query: User query
-        messages: Additional messages (inherited from MessagesState)
+        image_data: Base64-encoded input image string.
+        image_format: Image format ('png', 'jpeg', 'webp').
+        image_valid: Whether the uploaded image passed validation.
+        validation_error: Validation failure reason, None if valid.
+        styled_image: Raw bytes of the style-transferred image from GPT-5.5 image.
+        result: Base64-encoded final emoticon image (PNG, 360x360).
     """
 
-    # messages field is inherited from MessagesState
-    # It is defined as: messages: Annotated[list[AnyMessage], add_messages]
-    result: str
-    query: str
+    image_data: str
+    image_format: str
+    image_valid: bool
+    validation_error: Optional[str]
+    styled_image: Optional[bytes]
+    result: Optional[str]
