@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "convert": "./casts/convert/graph.py:convert_graph"
+  },
+  "env": ".env"
+}
