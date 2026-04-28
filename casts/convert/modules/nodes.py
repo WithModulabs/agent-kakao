@@ -59,14 +59,19 @@ class EmoticonGenerateNode(BaseNode):
 
     def __init__(self):
         super().__init__()
-        self._client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        self._client: openai.OpenAI | None = None
+
+    def _get_client(self) -> openai.OpenAI:
+        if self._client is None:
+            self._client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        return self._client
 
     def execute(self, state):
         image_bytes = decode_base64_image(state["image_data"])
         image_format = state["image_format"].lower()
         filename = f"input.{image_format}"
 
-        response = self._client.images.edit(
+        response = self._get_client().images.edit(
             model=_OPENAI_MODEL,
             image=bytes_to_file(image_bytes, filename),
             prompt=EMOTICON_GENERATE_PROMPT,
@@ -93,26 +98,3 @@ class ImageFormatNode(BaseNode):
         emoticon_bytes = resize_to_emoticon(state["styled_image"])
         result = encode_image_to_base64(emoticon_bytes)
         return {"result": result}
-
-
-class AsyncSampleNode(AsyncBaseNode):
-    """Simple async node - only uses state.
-
-    Attributes:
-        name: Canonical name of the node (class name by default).
-        verbose: Flag indicating whether detailed logging is enabled.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    async def execute(self, state):
-        """Execute the sample node.
-
-        Args:
-            state: Current graph state.
-
-        Returns:
-            dict: State updates (must be a dict)
-        """
-        return {"messages": [AIMessage(content="Welcome to the Act! by Async Node")]}
